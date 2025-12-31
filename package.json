@@ -1,0 +1,8 @@
+{
+  "name": "plantry",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "ml-training"
+  ]
+}

@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-plantry-text bg-plantry-light dark:bg-zinc-950 dark:text-plantry-cream transition-colors duration-500;
+  }
+}
+
+.glass-panel {
+  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-sm dark:bg-zinc-900/70 dark:border-white/5;
+}
+
+.glass-card {
+  @apply bg-white border border-stone-200 shadow-sm rounded-2xl dark:bg-zinc-900 dark:border-zinc-800;
+}
