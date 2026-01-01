@@ -537,84 +537,73 @@ const SuggestionCard: React.FC<{
 
 // --- 5. Active List Page ---
 
-export const ActiveListPage: React.FC<{ onNavigate: (page: any) => void, list: any[] }> = ({ onNavigate, list }) => {
-  const [items, setItems] = useState(list);
-
+export const ActiveListPage: React.FC<{
+  onNavigate: (page: any) => void;
+  list: any[];
+}> = ({ onNavigate, list }) => {
   async function completeSession() {
-  await fetch("http://localhost:4000/api/shopping/complete", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      householdId: "household_001",
-      items,
-    })
-  });
+    try {
+      await fetch("http://localhost:4000/api/shopping/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          householdId: "household_001",
+          items: list.map(i => i.name)
+        })
+      });
 
-  onNavigate("feedback");
-}
-
-  const toggleCheck = (index: number) => {
-    const newItems = [...items];
-    newItems[index].checked = !newItems[index].checked;
-    setItems(newItems);
-  };
-
-  const completedCount = items.filter(i => i.checked).length;
+      onNavigate("feedback");
+    } catch (err) {
+      console.error("Failed to complete session", err);
+    }
+  }
 
   return (
-    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="max-w-xl mx-auto pb-32">
-       <div className="flex justify-between items-end mb-8">
-          <div>
-            <h2 className="font-serif text-3xl text-plantry-sageDark dark:text-plantry-cream">Shopping List</h2>
-            <p className="text-stone-500">{items.length} Items • Est. ₹3,200</p>
-          </div>
-          <button className="text-sm font-medium text-plantry-sage bg-plantry-sage/10 px-4 py-2 rounded-full">
-            Edit
-          </button>
-       </div>
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="max-w-xl mx-auto pb-32"
+    >
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="font-serif text-3xl text-plantry-sageDark dark:text-plantry-cream">
+          Shopping List
+        </h2>
+        <p className="text-stone-500">{list.length} items</p>
+      </div>
 
-       <div className="space-y-3">
-          {items.map((item, idx) => (
-             <motion.div 
-               key={idx}
-               initial={false}
-               animate={{ opacity: item.checked ? 0.6 : 1, scale: item.checked ? 0.98 : 1 }}
-               className={`flex items-center p-4 rounded-xl border transition-all cursor-pointer ${item.checked ? 'bg-stone-100 border-transparent dark:bg-zinc-800' : 'bg-white border-stone-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-700'}`}
-               onClick={() => toggleCheck(idx)}
-             >
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 transition-colors ${item.checked ? 'bg-plantry-sage border-plantry-sage' : 'border-stone-300'}`}>
-                   {item.checked && <Check size={14} className="text-white" />}
-                </div>
-                <span className={`text-lg ${item.checked ? 'line-through text-stone-400' : 'text-plantry-text dark:text-stone-100'}`}>
-                  {item.name}
-                </span>
-                {item.type !== 'manual' && (
-                  <span className="ml-auto text-xs font-bold text-plantry-sage bg-plantry-sage/10 px-2 py-1 rounded">AI</span>
-                )}
-             </motion.div>
-          ))}
-          
-          <button className="w-full py-4 border-2 border-dashed border-stone-300 rounded-xl text-stone-400 font-medium hover:border-plantry-sage hover:text-plantry-sage transition-colors flex items-center justify-center gap-2">
-            <Plus size={18}/> Add Item Manually
-          </button>
-       </div>
+      {/* List */}
+      <div className="space-y-3">
+        {list.map((item, idx) => (
+          <div
+            key={idx}
+            className="flex items-center p-4 rounded-xl border bg-white border-stone-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-700"
+          >
+            <span className="text-lg text-plantry-text dark:text-stone-100">
+              {item.name}
+            </span>
 
-       <div className="fixed bottom-24 left-0 right-0 px-6 md:px-0 max-w-xl mx-auto pointer-events-none">
-         <div className="pointer-events-auto">
-            {completedCount > 0 ? (
-               <PrimaryButton onClick={completeSession}>
-                 Complete Session ({completedCount}/{items.length})
-               </PrimaryButton>
-            ) : (
-              <div className="bg-plantry-sageDark text-white p-4 rounded-2xl text-center shadow-lg backdrop-blur-md bg-opacity-90">
-                 Start shopping to track items.
-              </div>
+            {item.type !== "manual" && (
+              <span className="ml-auto text-xs font-bold text-plantry-sage bg-plantry-sage/10 px-2 py-1 rounded">
+                AI
+              </span>
             )}
-         </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Complete Button */}
+      <div className="fixed bottom-24 left-0 right-0 px-6 md:px-0 max-w-xl mx-auto">
+        <PrimaryButton onClick={completeSession}>
+          Complete Session
+        </PrimaryButton>
       </div>
     </motion.div>
   );
 };
+
 
 // --- 6. Feedback Page ---
 
@@ -632,19 +621,8 @@ export const FeedbackPage: React.FC<{ onNavigate: (page: any) => void }> = ({ on
        
        <h2 className="font-serif text-4xl text-plantry-sageDark dark:text-white mb-4">Shopping Complete!</h2>
        <p className="text-lg text-stone-500 mb-8 max-w-sm mx-auto">
-         We've updated your household inventory logic. Next week's suggestions will be even smarter.
+         We've updated your household inventory logic. Upcoming suggestions will be even smarter!
        </p>
-
-       <div className="w-full space-y-4">
-         <div className="glass-card p-4 text-left">
-           <p className="text-sm font-medium text-stone-500 mb-2">Did you forget anything?</p>
-           <div className="flex gap-2 flex-wrap">
-              {['Curd', 'Bread', 'Batter'].map(i => (
-                <span key={i} className="px-3 py-1 bg-stone-100 rounded-full text-sm text-stone-600 border border-stone-200">{i}</span>
-              ))}
-           </div>
-         </div>
-       </div>
 
        <div className="mt-12 w-full">
          <PrimaryButton onClick={() => onNavigate('dashboard')}>

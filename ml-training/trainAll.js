@@ -1,4 +1,4 @@
-import { db } from "../firebaseAdmin.js";
+import { db } from "./firebaseAdmin.js";
 import { fetchTrainingData } from "./fetchData.js";
 import { trainFPGrowth } from "./models/fpGrowth.js";
 import { trainBayesianForget } from "./models/bayesianForget.js";

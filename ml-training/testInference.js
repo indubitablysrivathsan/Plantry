@@ -3,7 +3,7 @@ import { db } from "./firebaseAdmin.js";
 const HOUSEHOLD_ID = "household_001";
 
 // Simulate user input
-const inputList = ["kabuli chana", "batter"];
+const inputList = ["Vermicelli", "ragi"];
 
 async function testInference() {
   // Fetch model outputs
