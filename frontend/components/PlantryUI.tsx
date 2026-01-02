@@ -394,12 +394,41 @@ export const SmartSuggestionsPage: React.FC<{ onNavigate: (page: any) => void, c
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const handleAction = (id: string, action: 'accept' | 'reject' | 'block') => {
-    setSuggestions(prev => prev.map(s => {
-      if (s.id !== id) return s;
-      return { ...s, added: action === 'accept', rejected: action === 'reject' || action === 'block' };
-    }));
+  const handleAction = async (
+    id: string,
+    action: "accept" | "reject" | "penalize" | "block"
+  ) => {
+    // Optimistic UI update
+    setSuggestions(prev =>
+      prev.map(s => {
+        if (s.id !== id) return s;
+        return {
+          ...s,
+          added: action === "accept",
+          rejected: action === "reject" || action === "block" || action === "penalize"
+        };
+      })
+    );
+
+    // Only send feedback for non-accept actions
+    if (action === "accept") return;
+
+    try {
+      await fetch("http://localhost:4000/api/suggestions/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        householdId: "household_001",
+        item: id,
+        action
+      })
+    });
+
+    } catch (err) {
+      console.error("Failed to send feedback", err);
+    }
   };
+
 
   const handleContinue = () => {
     const acceptedSuggestions = suggestions.filter(s => s.added).map(s => ({ ...s, checked: false }));
@@ -523,6 +552,9 @@ const SuggestionCard: React.FC<{
             <div className="flex gap-3">
                <button onClick={(e) => { e.stopPropagation(); onAction(suggestion.id, 'reject'); }} className="flex-1 py-2 text-sm font-medium text-stone-500 hover:bg-stone-100 rounded-lg flex items-center justify-center gap-2 transition-colors dark:hover:bg-zinc-700">
                   <ThumbsDown size={14} /> Not now
+               </button>
+               <button onClick={(e) => { e.stopPropagation(); onAction(suggestion.id, 'penalize'); }} className="flex-1 py-2 text-sm font-medium text-red-400 hover:bg-red-50 rounded-lg flex items-center justify-center gap-2 transition-colors dark:hover:bg-red-900/20">
+                  <X size={14} /> Suggest less often
                </button>
                <button onClick={(e) => { e.stopPropagation(); onAction(suggestion.id, 'block'); }} className="flex-1 py-2 text-sm font-medium text-red-400 hover:bg-red-50 rounded-lg flex items-center justify-center gap-2 transition-colors dark:hover:bg-red-900/20">
                   <X size={14} /> Never suggest

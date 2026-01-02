@@ -1,6 +1,7 @@
 import express from "express";
 import { db } from "../firebaseAdmin.js";
 import { generateSuggestions } from "../services/suggestionService.js";
+import { Timestamp } from "firebase-admin/firestore";
 
 const router = express.Router();
 
@@ -12,9 +13,7 @@ router.post("/infer", async (req, res) => {
       return res.status(400).json({ suggestions: [] });
     }
 
-    /* =========================
-       Fetch model outputs
-       ========================= */
+//fetch weights
     const assocSnap = await db
       .collection("model_outputs_associations")
       .doc(householdId)
@@ -34,9 +33,7 @@ router.post("/infer", async (req, res) => {
       return res.json({ suggestions: [] });
     }
 
-    /* =========================
-       Normalize data
-       ========================= */
+//normalize
     const associationsRaw = assocSnap.exists
       ? assocSnap.data().rules
       : {};
@@ -58,9 +55,7 @@ router.post("/infer", async (req, res) => {
       }));
     });
 
-    /* =========================
-       DEBUG (optional)
-       ========================= */
+//debugging
     console.log("=== DEBUG: FIRESTORE DATA ===");
     console.log("Current list from UI:", currentList);
     console.log("Association keys:", Object.keys(associations));
@@ -77,10 +72,9 @@ router.post("/infer", async (req, res) => {
       Object.entries(temporal)[0]
     );
 
-    /* =========================
-       Generate suggestions
-       ========================= */
-    const suggestions = generateSuggestions({
+//suggestions
+    const suggestions = await generateSuggestions({
+      householdId,
       currentList,
       associations,
       forgetScores,
@@ -93,5 +87,80 @@ router.post("/infer", async (req, res) => {
     res.status(500).json({ suggestions: [] });
   }
 });
+
+router.post("/feedback", async (req, res) => {
+  const { item, action, householdId } = req.body;
+  const normItem = normalizeItem(item);
+
+  if (!item || !action || !householdId) {
+    return res.status(400).json({ ok: false });
+  }
+
+  if (action === "reject") {
+    await db.collection("suggestion_feedback").add({
+      householdId,
+      item: normItem,
+      action: "reject",
+      expiresAt: Timestamp.fromDate(
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      ),
+      createdAt: new Date()
+    });
+
+    return res.json({ ok: true });
+  }
+
+  if (action === "block") {
+    await db.collection("suggestion_feedback").add({
+      householdId,
+      item: normItem,
+      action: "block",
+      createdAt: new Date()
+    });
+
+    return res.json({ ok: true });
+  }
+
+  if (action === "penalize") {
+    const snap = await db
+      .collection("suggestion_feedback")
+      .where("householdId", "==", householdId)
+      .where("item", "==", normItem)
+      .where("action", "==", "penalize")
+      .limit(1)
+      .get();
+
+    const BASE_PENALTY = 0.85;
+    const MIN_PENALTY = 0.3;
+
+    if (snap.empty) {
+      await db.collection("suggestion_feedback").add({
+        householdId,
+        item: normItem,
+        action: "penalize",
+        penalty: BASE_PENALTY,
+        createdAt: new Date()
+      });
+    } else {
+      const doc = snap.docs[0];
+      const currentPenalty = doc.data().penalty ?? 1.0;
+
+      await doc.ref.update({
+        penalty: Math.max(currentPenalty * BASE_PENALTY, MIN_PENALTY),
+        updatedAt: new Date()
+      });
+    }
+
+    return res.json({ ok: true });
+  }
+
+  res.status(400).json({ ok: false });
+});
+
+
+function normalizeItem(item) {
+  return item.trim().toLowerCase();
+}
+
 
 export default router;

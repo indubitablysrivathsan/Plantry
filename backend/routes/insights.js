@@ -30,8 +30,10 @@ router.get("/household", async (req, res) => {
       if (strongest) {
         rhythm = {
           avgDaysBetweenTrips: Math.round(strongest.avgGapDays),
-          preferredDay: strongest.pattern.replace("_", " "),
-          preferredTime: "Evening" // safe UX default
+          preferredDay: strongest.pattern
+            ? strongest.pattern.replace("_", " ")
+            : null,
+          preferredTime: "Evening"
         };
       }
     }
@@ -129,7 +131,7 @@ router.get("/fact", async (req, res) => {
 
 
 function capitalize(str) {
-  return str.replace(/\b\w/g, c => c.toUpperCase());
+  return String(str).replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export default router;

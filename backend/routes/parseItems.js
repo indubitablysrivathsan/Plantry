@@ -7,7 +7,7 @@ dotenv.config();
 const router = express.Router();
 
 // Toggle Gemini usage
-const USE_GEMINI = true;
+const USE_GEMINI = false;
 
 function fallbackParse(rawInput) {
   return rawInput
