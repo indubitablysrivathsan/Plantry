@@ -1,26 +1,30 @@
 export function trainBayesianForget(shoppingEvents, forgottenEvents) {
-  const totalEvents = shoppingEvents.length;
-  const stats = {};
+  const itemSeen = {};
+  const forgotten = {};
 
-  forgottenEvents.forEach(f => {
-    stats[f.item] ??= { forgotten: 0 };
-    stats[f.item].forgotten++;
+  shoppingEvents.forEach(e=>{
+    e.items.forEach(i=>{
+      itemSeen[i]=(itemSeen[i]||0)+1;
+    });
   });
 
-  const alpha = 1;
-  const beta = 1;
+  forgottenEvents.forEach(f=>{
+    forgotten[f.item]=(forgotten[f.item]||0)+1;
+  });
+
   const scores = {};
+  const alpha = 1, beta = 2;
 
-  for (const item in stats) {
-    const forgotten = stats[item].forgotten;
+  for (const item in forgotten) {
+    const seen = Math.max(itemSeen[item] || 0, forgotten[item]); // exposure guard
+    const miss = forgotten[item];
 
-    const prob =
-      (forgotten + alpha) /
-      (totalEvents + alpha + beta);
+    const prob = (miss + alpha) / (seen + alpha + beta);
 
     scores[item] = {
-      forgetProbability: Number(prob.toFixed(3)),
-      evidenceCount: forgotten
+      forgetProbability: +Math.min(1, prob).toFixed(3),
+      evidenceCount: miss,
+      seenCount: seen
     };
   }
 

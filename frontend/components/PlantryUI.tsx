@@ -443,7 +443,7 @@ export const SmartSuggestionsPage: React.FC<{ onNavigate: (page: any) => void, c
         subtitle="Based on your household history, you might be forgetting these." 
       />
 
-      <motion.div key={suggestions.length} variants={staggerContainer} initial="hidden" animate="show" className="space-y-6">
+      <motion.div key={suggestions.length} variants={staggerContainer} initial={false} animate="show" className="space-y-6">
 
         {loading && (
           <p className="text-center text-stone-400">
