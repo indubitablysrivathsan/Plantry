@@ -939,6 +939,47 @@ export const InsightsPage: React.FC = () => {
            </div>
         </div>
 
+        {/* Shopping Rhythm – Visual Analytics */}
+        <motion.div
+          variants={fadeUpItem}
+          className="glass-card p-5 space-y-4 transition-shadow hover:shadow-lg"
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <h3 className="font-serif text-lg text-plantry-sageDark dark:text-white flex items-center gap-2">
+                Shopping Rhythm
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Household shopping consistency over time
+              </p>
+            </div>
+
+            <span className="text-xs font-medium uppercase tracking-wider text-plantry-sage bg-plantry-sage/10 px-2 py-1 rounded-full">
+              Visualization
+            </span>
+          </div>
+
+          {/* Embedded Chart */}
+          <div className="relative w-full h-[420px] rounded-2xl overflow-hidden border border-stone-200/70 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-sm shadow-inner">
+            <iframe
+              title="Shopping Rhythm Analytics"
+              src="https://lookerstudio.google.com/embed/reporting/aae25c4b-2245-4c54-961f-b36f72a8807f/page/So9jF"
+              className="absolute inset-0 w-full h-full"
+              frameBorder="0"
+              allowFullScreen
+            />
+          </div>
+
+          {/* Footer Explanation */}
+          <div className="pt-2 border-t border-stone-200/60 dark:border-zinc-800">
+            <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+              This view provides insight into your household’s shopping patterns, highlighting extended gaps between trips to help track overlooked essentials.
+            </p>
+          </div>
+        </motion.div>
+
+
       </div>
     </motion.div>
   );

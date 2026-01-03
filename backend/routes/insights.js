@@ -86,7 +86,7 @@ router.get("/household", async (req, res) => {
     res.json({
       rhythm,
       forgotten,
-      pairs: pairs.slice(0, 5)
+      pairs: pairs.slice(0, 5).reverse()
     });
 
   } catch (err) {

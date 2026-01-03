@@ -20,7 +20,6 @@ router.post("/complete", async (req, res) => {
       items: normalizedItems,
       shoppingDate: new Date(),
       shoppingSource: "manual",
-      totalAmount: totalAmount ?? null,
       createdAt: new Date()
     });
 

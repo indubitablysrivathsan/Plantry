@@ -1,11 +1,20 @@
 import express from "express";
 import cors from "cors";
+
 import suggestionsRouter from "./routes/suggestions.js";
 import insightsRouter from "./routes/insights.js";
 import parseItemsRouter from "./routes/parseItems.js";
 import shoppingEventsRouter from "./routes/shoppingEvents.js";
 import activityRouter from "./routes/activity.js";
 import forgottenRouter from "./routes/forgotten.js";
+
+import { generateShoppingRhythmAnalytics } from "./services/shoppingRhythmExport.service.js";
+import { generateItemFrequency } from "./services/itemFrequencyExport.service.js";
+
+import {
+  writeShoppingRhythmToSheet,
+  writeItemPurchaseFrequencyToSheet
+} from "./services/googleSheets.service.js";
 
 const app = express();
 
@@ -19,8 +28,6 @@ app.use("/api/shopping", shoppingEventsRouter);
 app.use("/api/activity", activityRouter);
 app.use("/api/forgotten", forgottenRouter);
 
-
-
 app.get("/", (_, res) => {
   res.send("Plantry backend running");
 });
@@ -29,3 +36,16 @@ const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
+
+/* ===============================
+   ANALYTICS EXPORTS (ON STARTUP)
+   =============================== */
+(async () => {
+  const rhythm = await generateShoppingRhythmAnalytics();
+  await writeShoppingRhythmToSheet(rhythm);
+
+  const itemFreq = await generateItemFrequency("household_001");
+  await writeItemPurchaseFrequencyToSheet(itemFreq);
+
+  console.log("All analytics exported to Google Sheets");
+})();
