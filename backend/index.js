@@ -32,20 +32,20 @@ app.get("/", (_, res) => {
   res.send("Plantry backend running");
 });
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+  console.log(`Server running on ${PORT}`);
 });
 
 /* ===============================
    ANALYTICS EXPORTS (ON STARTUP)
    =============================== */
-(async () => {
-  const rhythm = await generateShoppingRhythmAnalytics();
-  await writeShoppingRhythmToSheet(rhythm);
+// (async () => {
+//   const rhythm = await generateShoppingRhythmAnalytics();
+//   await writeShoppingRhythmToSheet(rhythm);
 
-  const itemFreq = await generateItemFrequency("household_001");
-  await writeItemPurchaseFrequencyToSheet(itemFreq);
+//   const itemFreq = await generateItemFrequency("household_001");
+//   await writeItemPurchaseFrequencyToSheet(itemFreq);
 
-  console.log("All analytics exported to Google Sheets");
-})();
+//   console.log("All analytics exported to Google Sheets");
+// })();

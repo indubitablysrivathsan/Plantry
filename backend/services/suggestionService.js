@@ -9,7 +9,7 @@ const SEASONAL_PRIORS = {
     mango: 0.45,
     watermelon: 0.4,
     muskmelon: 0.38,
-    "ice apple (nungu)": 0.42,      // nungu
+    "ice apple (nungu)": 0.42,
     kokum: 0.35,
     buttermilk: 0.32,
     cucumber: 0.28
@@ -30,7 +30,6 @@ const SEASONAL_PRIORS = {
     lemon: 0.3,
     "tea leaves": 0.28
   }
-
 };
 
 function getSeason() {
@@ -41,7 +40,7 @@ function getSeason() {
 }
 
 /* =========================
-   FEEDBACK QUERIES (unchanged)
+   FEEDBACK QUERIES
    ========================= */
 
 async function getBlockedItems(householdId) {
@@ -89,132 +88,133 @@ export async function generateSuggestions({
   forgetScores,
   temporal
 }) {
-
   const blockedItems = await getBlockedItems(householdId);
   const currentSet = new Set(currentList.map(i => i.toLowerCase()));
 
-  const scores = {};
-  const meta = {};
+  const frequent = [];
+  const forgotten = [];
+  const seasonalTemporal = [];
+  const seasonalManual = [];
 
-  /* ---------- FUSED SCORING ---------- */
+  /* =========================
+     1. ASSOCIATIONS
+     ========================= */
   currentList.forEach(raw => {
-    const baseItem = raw.toLowerCase();
-
-    (associations[baseItem] || []).forEach(r => {
+    const base = raw.toLowerCase();
+    (associations[base] || []).forEach(r => {
       if (currentSet.has(r.item)) return;
-
-      const forget = forgetScores[r.item]?.forgetProbability || 0;
-      const temp = temporal[r.item] || {};
-      const urgency = temp.urgency || 0;
-      const daysSince = temp.daysSinceLast || 0;
-
-      const decay = Math.exp(-daysSince / 180);
-
-      const score =
-        (0.55 * r.confidence) +
-        (0.30 * forget) +
-        (0.15 * urgency);
-
-      const finalScore = score * decay;
-
-      scores[r.item] = (scores[r.item] || 0) + finalScore;
-
-      meta[r.item] = {
-        association: r.confidence,
-        forget,
-        urgency
-      };
+      frequent.push({
+        item: r.item,
+        score: r.confidence,
+        reason: `Often bought together with ${base}.`
+      });
     });
   });
 
-  /* ---------- SEASONAL PRIORS (ONCE) ---------- */
-  const season = getSeason();
-  const priors = SEASONAL_PRIORS[season] || {};
-  const randomPriors = Object.entries(priors)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 2);
-
-
-  randomPriors.forEach(([item, prior]) => {
+  /* =========================
+     2. FORGETFULNESS (FIXED)
+     ========================= */
+  Object.entries(forgetScores || {}).forEach(([item, meta]) => {
     if (currentSet.has(item)) return;
+    if (meta.evidenceCount < 5) return;
 
-    scores[item] = Math.max(scores[item] || 0, prior);
-    meta[item] = { ...(meta[item] || {}), seasonal: true };
+    if (
+      meta.forgetProbability >= 0.12 &&
+      meta.forgetProbability <= 0.45
+    ) {
+      forgotten.push({
+        item,
+        score: meta.forgetProbability,
+        reason: `Missed in ${Math.round(
+          meta.forgetProbability * 100
+        )}% of trips.`
+      });
+    }
   });
 
-  /* ---------- RANKING ---------- */
-  const ranked = Object.entries(scores)
-    .map(([item, score]) => ({ item, score, meta: meta[item] }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 7);
+  /* =========================
+     3. TEMPORAL → RUN-OUT
+     ========================= */
+  Object.entries(temporal || {}).forEach(([item, meta]) => {
+    if (currentSet.has(item)) return;
+    if (meta.confidence < 0.5) return;
 
-  /* ---------- FINAL + FEEDBACK FILTER ---------- */
+    seasonalTemporal.push({
+      item,
+      score: meta.confidence,
+      reason: "You’re likely about to run out."
+    });
+  });
+
+  /* =========================
+     4. MANUAL SEASONAL PRIORS
+     ========================= */
+  const season = getSeason();
+  const priors = SEASONAL_PRIORS[season] || {};
+
+  Object.entries(priors).forEach(([item, score]) => {
+    const norm = item.toLowerCase();
+    if (currentSet.has(norm)) return;
+
+    seasonalManual.push({
+      item: norm,
+      score,
+      reason: "Commonly bought during this season."
+    });
+  });
+
+  /* =========================
+     5. TAKE PER BUCKET
+     ========================= */
+  const take = (arr, n) =>
+    [...new Map(arr.map(a => [a.item, a])).values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, n);
+
+  const combined = [
+    ...take(frequent, 2).map(toSuggestion("frequent")),
+    ...take(forgotten, 2).map(toSuggestion("forgotten")),
+    ...take(seasonalTemporal, 1).map(toSuggestion("seasonal")),
+    ...take(seasonalManual, 1).map(toSuggestion("seasonal"))
+  ];
+
+  /* =========================
+     6. FEEDBACK FILTER
+     ========================= */
   const final = [];
-  for (const r of ranked) {
-    const item = r.item;
-
+  for (const s of combined) {
+    const item = s.id.toLowerCase();
     if (blockedItems.has(item)) continue;
     if (await isRejectedRecently(householdId, item)) continue;
 
     const penalty = await getFeedbackPenalty(householdId, item);
-
-    final.push({
-      id: item,
-      name: capitalize(item),
-      score: r.score * penalty,
-      confidence: r.score >= 0.6 ? "high" : r.score >= 0.4 ? "medium" : "low",
-      type: r.meta?.seasonal
-      ? "seasonal"
-      : r.meta?.forget > 0.3
-      ? "forgotten"
-      : "frequent",
-      reason: buildReason(r.meta)
-    });
+    final.push({ ...s, score: s.score * penalty });
   }
 
   return final.sort((a, b) => b.score - a.score);
 }
 
 /* =========================
-   EXPLAINABILITY
+   HELPERS
    ========================= */
 
-function buildReason(meta = {}) {
-  const forgetPct =
-    typeof meta.forget === "number"
-      ? Math.round(meta.forget * 100)
-      : null;
+//helpers
 
-  // Seasonal prior only (no behavioral evidence yet)
-  if (meta.seasonal) {
-    return "Commonly bought during this season.";
-  }
-
-  // Strong association + forgetfulness
-  if (meta.association && forgetPct !== null && forgetPct >= 10 && forgetPct <= 40) {
-    return `Often bought together and missed in ${forgetPct}% of trips.`;
-  }
-  else if (meta.association && forgetPct > 40) {
-    return `Often bought together and frequently missed when usually needed.`;
-  }
-
-  // Pure forgetfulness
-  if (forgetPct >= 10 && forgetPct <= 40) {
-    return `Missed in ${forgetPct}% of trips.`;
-  }
-  else if (forgetPct > 40) {
-    return `Frequently missed when usually needed.`;
-  }
-
-  // Pure association
-  if (meta.association) {
-    return `Often bought with items in your list.`;
-  }
-
-  return `Based on your household’s buying patterns.`;
+function toSuggestion(type) {
+  return s => ({
+    id: s.item,
+    name: capitalize(s.item),
+    type,
+    confidence:
+      s.score >= 0.6
+        ? "high"
+        : s.score >= 0.4
+        ? "medium"
+        : "low",
+    score: s.score,
+    reason: s.reason
+  });
 }
-
-//helper
 
 function capitalize(str) {
   return str.replace(/\b\w/g, c => c.toUpperCase());

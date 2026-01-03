@@ -9,6 +9,7 @@ lerna-debug.log*
 
 #sensitive
 serviceAccountKey.json
+sheets-service-account.json
 
 node_modules
 dist
