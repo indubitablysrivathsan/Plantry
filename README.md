@@ -1,58 +1,79 @@
-Plantry 🛒
+# 🛒 Plantry
 
-An Explainable, ML-Driven Smart Grocery Planning System
+### An Explainable, ML-Driven Smart Grocery Planning System
 
-Plantry is a smart grocery planning application that helps households create better shopping lists by learning from past behavior.
-Unlike rule-based reminder apps, Plantry uses multiple interpretable ML signals to generate transparent, explainable suggestions that feel human, not spammy.
+Plantry is a *smart grocery planning application* that helps households create better shopping lists by learning from past behavior.
+Unlike rule-based reminder apps, Plantry uses *multiple interpretable ML signals* to generate *transparent, explainable suggestions* that feel human—not spammy.
 
-The system is intentionally designed to avoid hallucinated recommendations and instead surfaces suggestions only when supported by data.
+The system is intentionally designed to *avoid hallucinated recommendations* and surfaces suggestions *only when supported by data*.
 
-Overview
+---
 
-The system analyzes past shopping behavior to assist list creation and provide household-level insights.
-It does not perform online model training or black-box inference.
+## Overview
 
-The backend consumes precomputed model outputs stored in Firestore and maps them to UI-friendly suggestions.
+Plantry analyzes *household shopping behavior* to assist list creation and provide meaningful insights.
 
-Features
-Smart Suggestions
+Key design choices:
 
-Suggestions are generated during list creation and grouped into three categories:
+* No online model training
+* No black-box inference
+* No opaque recommendations
 
-Frequently Bought Together
-Derived from association rules (FP-Growth), using both forward and reverse lookups.
+The backend consumes *precomputed model outputs* stored in Firestore and maps them into *UI-friendly, explainable suggestions*.
 
-You Usually Forget
-Based on forgetfulness probabilities and evidence counts.
+---
 
-Seasonal / Due Reminders
-Based on temporal restocking patterns and confidence scores.
+## Core Features
+
+### Smart Suggestions
+
+Suggestions are generated *during list creation* and grouped into three categories:
+
+#### 1. Frequently Bought Together
+
+* Derived from *association rules (FP-Growth)*
+* Uses both *forward and reverse lookups*
+
+#### 2. You Usually Forget
+
+* Based on *forgetfulness probabilities*
+* Weighted by *evidence counts*
+
+#### 3. Seasonal / Due Reminders
+
+* Based on *temporal restocking patterns*
+* Triggered using *confidence thresholds*
 
 Each suggestion includes:
 
-Category (frequent, forgotten, seasonal)
+* Category (frequent / forgotten / seasonal)
+* Confidence level
+* Human-readable explanation
 
-Confidence level
+---
 
-Explanation string
+### Household Insights
 
-Household Insights
+A *read-only analytics view* providing:
 
-A read-only analytics view providing:
+* Shopping rhythm (average restock gap & cadence)
+* Frequently forgotten items
+* High-confidence item associations
 
-Shopping rhythm (average restock gap and dominant cadence)
+All insights are:
 
-Frequently forgotten items
+* Computed *server-side*
+* Derived strictly from *stored model outputs*
 
-High-confidence item pairs
+---
 
-All insights are computed server-side from stored model outputs.
+## Data Model (Firestore)
 
-Data Model (Firestore)
-shopping_events
+### shopping_events
 
 Raw shopping history.
 
+json
 {
   "householdId": "string",
   "shoppingDate": "timestamp",
@@ -61,10 +82,14 @@ Raw shopping history.
   "createdAt": "timestamp"
 }
 
-forgotten_events
 
-Events used to train forgetfulness models.
+---
 
+### forgotten_events
+
+Used to train forgetfulness models.
+
+json
 {
   "householdId": "string",
   "shoppingEventId": "string",
@@ -76,10 +101,14 @@ Events used to train forgetfulness models.
   "createdAt": "timestamp"
 }
 
-model_outputs_associations
+
+---
+
+### model_outputs_associations
 
 Association rules (FP-Growth output).
 
+json
 {
   "rules": {
     "milk": [
@@ -88,23 +117,28 @@ Association rules (FP-Growth output).
   }
 }
 
-model_outputs_forgetfulness
+
+---
+
+### model_outputs_forgetfulness
 
 Forgetfulness probabilities.
 
+json
 {
   "scores": {
-    "oil": {
-      "forgetProbability": 0.48,
-      "evidenceCount": 10
-    }
+    "oil": { "forgetProbability": 0.48, "evidenceCount": 10 }
   }
 }
 
-model_outputs_temporal
+
+---
+
+### model_outputs_temporal
 
 Temporal restocking patterns.
 
+json
 {
   "items": {
     "atta": {
@@ -115,21 +149,27 @@ Temporal restocking patterns.
   }
 }
 
-Backend API
-POST /api/suggestions/infer
+
+---
+
+## Backend API
+
+### POST /api/suggestions/infer
 
 Generates suggestions for a shopping list.
 
-Request
+*Request*
 
+json
 {
   "householdId": "household_001",
   "currentList": ["milk", "eggs"]
 }
 
 
-Response
+*Response*
 
+json
 {
   "suggestions": [
     {
@@ -143,63 +183,75 @@ Response
 }
 
 
-Suggestion distribution is quota-based to avoid dominance by a single signal.
+> Suggestion distribution is *quota-based* to prevent dominance by a single signal.
 
-GET /api/insights/household
+---
+
+### GET /api/insights/household
 
 Returns household-level insights.
 
-Query
+*Query*
+
 
 ?householdId=household_001
 
-Architecture
+
+---
+
+## Architecture
+
+
 Frontend (React)
-    |
-    | REST
-    v
-Backend (Node.js / Express)
-    |
-    | Read-only inference
-    v
-Firestore (model outputs + events)
+        |
+        v
+REST API (Node.js / Express)
+        |
+        v
+Firestore (Events + Precomputed Model Outputs)
 
 
-Key characteristics:
+### Key Characteristics
 
-No ML logic in frontend
+* No ML logic in the frontend
+* No raw event scanning during inference
+* All suggestions derived from precomputed outputs
+* Deterministic and explainable inference
 
-No raw event scanning during inference
+---
 
-All suggestions derived from precomputed outputs
+## Design Notes
 
-Design Notes
+* Deterministic inference pipeline
+* No heuristic suggestions without supporting data
+* Explicit separation between:
 
-Deterministic inference
+  * Training data
+  * Model outputs
+  * Inference logic
+* Designed to handle *sparse household data*
+* Avoids forced or noisy recommendations
 
-No heuristic suggestions without supporting data
+---
 
-Explicit separation between training data and inference logic
+## Setup (Backend)
 
-Designed to handle sparse data without forced recommendations
-
-Setup (Backend)
+bash
 npm install
 node index.js
 
 
-Requires a valid Firebase Admin service account.
+> Requires a valid *Firebase Admin service account*.
 
-Status
+---
+
+## Current Status
 
 The system currently supports:
 
-Association-based suggestions
+* Association-based suggestions
+* Forgetfulness-based reminders
+* Temporal restock reminders
+* Household-level analytics and insights
 
-Forgetfulness-based reminders
-
-Temporal restock reminders
-
-Household-level insights
-
-Further extensions can be added without modifying the frontend contract.
+Further extensions can be added *without modifying the frontend contract*.
