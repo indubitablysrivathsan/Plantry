@@ -126,9 +126,3 @@ With a larger user base, learned patterns can be generalized across households v
 ## Summary
 
 Plantry demonstrates how **behavior-aware intelligence** can improve everyday grocery planning using small, explainable models and household-specific data—without over-engineered AI or invasive data collection.
-
----
-* A **feature → ML mapping table**
-* A **demo walkthrough script**
-
-Say the word.
